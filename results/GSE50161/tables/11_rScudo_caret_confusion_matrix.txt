@@ -1,0 +1,32 @@
+Confusion Matrix and Statistics
+
+          Reference
+Prediction Normal EPN GBM MED PA
+    Normal      3   0   1   0  0
+    EPN         0  11   0   0  0
+    GBM         0   1   9   0  2
+    MED         0   1   0   6  0
+    PA          0   0   0   0  2
+
+Overall Statistics
+                                         
+               Accuracy : 0.8611         
+                 95% CI : (0.705, 0.9533)
+    No Information Rate : 0.3611         
+    P-Value [Acc > NIR] : 8.504e-10      
+                                         
+                  Kappa : 0.8146         
+                                         
+ Mcnemar's Test P-Value : NA             
+
+Statistics by Class:
+
+                     Class: Normal Class: EPN Class: GBM Class: MED Class: PA
+Sensitivity                1.00000     0.8462     0.9000     1.0000   0.50000
+Specificity                0.96970     1.0000     0.8846     0.9667   1.00000
+Pos Pred Value             0.75000     1.0000     0.7500     0.8571   1.00000
+Neg Pred Value             1.00000     0.9200     0.9583     1.0000   0.94118
+Prevalence                 0.08333     0.3611     0.2778     0.1667   0.11111
+Detection Rate             0.08333     0.3056     0.2500     0.1667   0.05556
+Detection Prevalence       0.11111     0.3056     0.3333     0.1944   0.05556
+Balanced Accuracy          0.98485     0.9231     0.8923     0.9833   0.75000
