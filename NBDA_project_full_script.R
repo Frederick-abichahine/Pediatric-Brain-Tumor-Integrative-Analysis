@@ -1165,6 +1165,129 @@ plot(
 legend("topleft", legend = names(node_colors), col = node_colors, pch = 19, bty = "n", cex = 0.8)
 close_png()
 
+make_top_centrality_table <- function(tab, metric, label, n = 10, min_degree = 0) {
+  metric_values <- tab[[metric]]
+  keep <- !is.na(metric_values) & tab$Degree >= min_degree
+  top_tab <- tab[keep, ]
+  top_tab <- top_tab[order(-top_tab[[metric]], top_tab$GeneSymbol), ]
+  top_tab <- head(top_tab, n)
+
+  data.frame(
+    Metric = label,
+    Rank = seq_len(nrow(top_tab)),
+    GeneSymbol = top_tab$GeneSymbol,
+    Value = top_tab[[metric]],
+    Degree = top_tab$Degree,
+    Strength = top_tab$Strength,
+    Closeness = top_tab$Closeness,
+    Betweenness = top_tab$Betweenness,
+    EigenCentrality = top_tab$EigenCentrality,
+    Status = top_tab$Status
+  )
+}
+
+top_degree <- make_top_centrality_table(centrality, "Degree", "Degree")
+top_strength <- make_top_centrality_table(centrality, "Strength", "Strength")
+top_betweenness <- make_top_centrality_table(centrality, "Betweenness", "Betweenness")
+top_closeness <- make_top_centrality_table(
+  centrality,
+  "Closeness",
+  "Closeness_degree_ge_3",
+  min_degree = 3
+)
+top_eigen <- make_top_centrality_table(centrality, "EigenCentrality", "Eigenvector")
+
+top_centrality_summary <- rbind(
+  top_degree,
+  top_strength,
+  top_betweenness,
+  top_closeness,
+  top_eigen
+)
+write_csv(top_centrality_summary, "15_coexpression_top_centrality_summary.csv")
+
+label_genes <- unique(c(
+  head(top_degree$GeneSymbol, 6),
+  head(top_betweenness$GeneSymbol, 6),
+  head(top_closeness$GeneSymbol, 5),
+  head(top_eigen$GeneSymbol, 6)
+))
+label_genes <- head(label_genes, 20)
+
+make_label <- function(gene) {
+  flags <- character(0)
+  if (gene %in% top_degree$GeneSymbol) flags <- c(flags, "D")
+  if (gene %in% top_betweenness$GeneSymbol) flags <- c(flags, "B")
+  if (gene %in% top_closeness$GeneSymbol) flags <- c(flags, "C")
+  if (gene %in% top_eigen$GeneSymbol) flags <- c(flags, "E")
+  paste0(gene, " [", paste(flags, collapse = "/"), "]")
+}
+
+label_lookup <- setNames(vapply(label_genes, make_label, character(1)), label_genes)
+enhanced_labels <- ifelse(
+  V(coexpression_graph)$name %in% label_genes,
+  label_lookup[V(coexpression_graph)$name],
+  NA
+)
+
+between_values <- centrality$Betweenness[match(V(coexpression_graph)$name, centrality$GeneSymbol)]
+between_scaled <- between_values / max(between_values, na.rm = TRUE)
+between_scaled[is.na(between_scaled)] <- 0
+node_frame_colors <- ifelse(
+  between_scaled >= sort(unique(between_scaled), decreasing = TRUE)[min(10, length(unique(between_scaled)))],
+  "#1B1B1B",
+  "#FFFFFF"
+)
+
+connected_graph <- induced_subgraph(
+  coexpression_graph,
+  vids = V(coexpression_graph)[degree(coexpression_graph) > 0]
+)
+connected_match <- match(V(connected_graph)$name, V(coexpression_graph)$name)
+layout_connected <- layout_fr[connected_match, , drop = FALSE]
+node_size_connected <- node_size[connected_match]
+enhanced_labels_connected <- enhanced_labels[connected_match]
+node_frame_colors_connected <- node_frame_colors[connected_match]
+
+open_png("24_coexpression_network_enhanced_centrality.png", width = 2200, height = 1700)
+par(mar = c(1, 1, 4, 1), xpd = NA)
+plot(
+  connected_graph,
+  layout = layout_connected,
+  vertex.label = enhanced_labels_connected,
+  vertex.label.cex = 0.62,
+  vertex.label.color = "#111111",
+  vertex.label.dist = 0.55,
+  vertex.size = node_size_connected,
+  vertex.color = node_colors[V(connected_graph)$Status],
+  vertex.frame.color = node_frame_colors_connected,
+  edge.width = 0.4 + 1.8 * E(connected_graph)$Weight,
+  edge.color = ifelse(E(connected_graph)$Sign == "Positive", "#7A7A7A55", "#D95F0255"),
+  edge.curved = 0.08,
+  main = "GSE50161 co-expression network with centrality labels"
+)
+legend(
+  "topleft",
+  legend = names(node_colors),
+  col = node_colors,
+  pch = 19,
+  bty = "n",
+  cex = 0.85,
+  title = "Regulation"
+)
+legend(
+  "bottomleft",
+  legend = c(
+    "Node size = degree centrality",
+    "Black border = top betweenness genes",
+    "Label tags: D degree, B betweenness, C closeness, E eigenvector",
+    "Degree-zero nodes omitted from this presentation view"
+  ),
+  bty = "n",
+  cex = 0.78
+)
+close_png()
+
 try({
   createNetworkFromIgraph(
     coexpression_graph,
